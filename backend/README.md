@@ -59,4 +59,10 @@ Para ejecutar la prueba de salud, en otra terminal dentro de `backend/`:
 pytest
 ```
 
+## Chat del tutor (Etapa 5)
+
+Agrega `GEMINI_API_KEY` en `backend/.env` desde una clave creada en Google AI Studio; nunca la incluyas en el frontend ni en Git. El modelo se selecciona con `GEMINI_MODEL` (por defecto `gemini-3.8-flash`). Groq es opcional y se activa con `GROQ_ENABLED=true`, `GROQ_API_KEY` y `GROQ_MODEL` (por defecto `openai/gpt-oss-20b`). Gemini se intenta primero; Groq solo se usa ante fallos temporales o de conexión. La terminal registra qué proveedor generó cada respuesta. Para instalar el SDK nuevo, ejecuta `python -m pip install -r requirements.txt` dentro del entorno virtual. Puedes ajustar `RETRIEVAL_TOP_K`, `MAX_CHAT_MESSAGE_CHARS`, `MAX_HISTORY_MESSAGES` y `MAX_CONTEXT_CHARS`.
+
+El endpoint público `POST /api/v1/chat` recibe `course_id`, `message` y, opcionalmente, hasta ocho mensajes recientes con roles `user` o `assistant`. Devuelve `answer` y referencias `sources` con título del documento e índice del fragmento. La búsqueda se restringe al curso activo y las conversaciones no se guardan. Si falta la clave, responde `503`. En Swagger (`/docs`), selecciona el endpoint, envía el UUID de un curso activo y una pregunta sobre su material. Usa documentos didácticos no confidenciales al probar el nivel gratuito de Gemini.
+
 `CORS_ORIGINS` acepta una lista de orígenes separados por comas; en local usa `http://localhost:5173`. La aplicación puede arrancar y servir `/health` sin conexión de base de datos; Alembic sí requiere `DATABASE_URL` para una migración real.

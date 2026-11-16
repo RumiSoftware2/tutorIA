@@ -16,6 +16,15 @@ class Settings(BaseSettings):
     max_extracted_chars: int = Field(default=250_000, ge=1_000, le=1_000_000)
     chunk_size_chars: int = Field(default=1_200, ge=100, le=10_000)
     chunk_overlap_chars: int = Field(default=150, ge=0, le=2_000)
+    gemini_api_key: str | None = None
+    gemini_model: str = "gemini-3.8-flash"
+    groq_api_key: str | None = None
+    groq_model: str = "openai/gpt-oss-20b"
+    groq_enabled: bool = False
+    retrieval_top_k: int = Field(default=5, ge=1, le=20)
+    max_chat_message_chars: int = Field(default=1_500, ge=1, le=10_000)
+    max_history_messages: int = Field(default=8, ge=0, le=20)
+    max_context_chars: int = Field(default=8_000, ge=100, le=50_000)
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
