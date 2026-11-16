@@ -33,6 +33,20 @@ alembic upgrade head
 
 La migración crea `courses`, `documents` y `document_chunks`, sus claves foráneas, restricciones, índices y el índice GIN de búsqueda. No se ejecuta automáticamente al iniciar FastAPI.
 
+## Acceso docente y cursos
+
+Antes de probar el login, agrega estas variables a tu archivo local `.env` (no lo subas a Git):
+
+```dotenv
+TEACHER_ACCESS_CODE=elige_una_clave_larga_para_docentes
+JWT_SECRET_KEY=secreto_aleatorio_generado_localmente
+JWT_EXPIRE_HOURS=8
+```
+
+Genera el secreto JWT desde PowerShell con `python -c "import secrets; print(secrets.token_urlsafe(48))"` y guarda el resultado en `.env`. No compartas ese valor. El login se prueba en `POST /api/v1/auth/teacher/login`; las rutas de administración requieren `Authorization: Bearer <token>`. Las rutas `GET /api/v1/courses` y `GET /api/v1/courses/{id}` muestran solo cursos activos. Para el panel docente, `GET /api/v1/courses/manage` devuelve todos los cursos y también requiere token.
+
+Operaciones docentes disponibles: `POST /api/v1/courses`, `PATCH /api/v1/courses/{id}` y `PATCH /api/v1/courses/{id}/status`.
+
 Para ejecutar la prueba de salud, en otra terminal dentro de `backend/`:
 
 ```powershell
