@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import CourseGallery from './components/CourseGallery.jsx'
 import RoleSwitcher from './components/RoleSwitcher.jsx'
+import TeacherDashboard from './components/TeacherDashboard.jsx'
+import TeacherLogin from './components/TeacherLogin.jsx'
 import { getCourses } from './services/api.js'
 import './App.css'
 
 function App() {
   const [role, setRole] = useState('student')
+  const [teacherToken, setTeacherToken] = useState(() => window.sessionStorage.getItem('teacherToken'))
   const [courses, setCourses] = useState([])
   const [selectedCourse, setSelectedCourse] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -39,9 +42,24 @@ function App() {
   }, [])
 
   function chooseRole(nextRole) {
+    if (nextRole === 'student') {
+      window.sessionStorage.removeItem('teacherToken')
+      setTeacherToken(null)
+      if (role !== 'student') loadCourses()
+    }
     setRole(nextRole)
     setSelectedCourse(null)
   }
+
+  function handleLoginSuccess(token) {
+    window.sessionStorage.setItem('teacherToken', token)
+    setTeacherToken(token)
+  }
+
+  const handleUnauthorized = useCallback(() => {
+    window.sessionStorage.removeItem('teacherToken')
+    setTeacherToken(null)
+  }, [])
 
   return (
     <div className="app-shell">
@@ -66,15 +84,11 @@ function App() {
 
       <main id="inicio">
         {role === 'teacher' ? (
-          <section className="teacher-preview" aria-live="polite">
-            <div className="teacher-preview-icon" aria-hidden="true">✦</div>
-            <p className="eyebrow">ESPACIO DOCENTE</p>
-            <h1>Prepara el camino para aprender.</h1>
-            <p>El acceso docente y la gestión de cursos se habilitarán en la siguiente etapa.</p>
-            <button className="button button-primary" onClick={() => chooseRole('student')}>
-              Volver a Estudiante
-            </button>
-          </section>
+          teacherToken ? (
+            <TeacherDashboard token={teacherToken} onLogout={() => chooseRole('student')} onUnauthorized={handleUnauthorized} />
+          ) : (
+            <TeacherLogin onSuccess={handleLoginSuccess} onCancel={() => chooseRole('student')} />
+          )
         ) : selectedCourse ? (
           <section className="course-preview" aria-live="polite">
             <button className="back-link" onClick={() => setSelectedCourse(null)}>
