@@ -47,6 +47,12 @@ Genera el secreto JWT desde PowerShell con `python -c "import secrets; print(sec
 
 Operaciones docentes disponibles: `POST /api/v1/courses`, `PATCH /api/v1/courses/{id}` y `PATCH /api/v1/courses/{id}/status`.
 
+## Documentos de estudio
+
+El docente autenticado puede usar `POST /api/v1/courses/{course_id}/documents` para cargar un PDF, DOCX o PPTX en `multipart/form-data`, `GET` en la misma ruta para ver los materiales del curso y `DELETE /api/v1/documents/{document_id}` para borrar uno. El límite inicial es 10 MB; se guardan los metadatos y fragmentos de texto en PostgreSQL, no el archivo original. Si un PDF no permite extraer texto, la API informa que el OCR no está incluido. La conversión usa MarkItDown con plugins desactivados.
+
+En Swagger (`/docs`), autentícate con el botón **Authorize** después del login. Para cargar un archivo, abre el endpoint `POST`, indica el UUID del curso y selecciona el archivo en el campo `file`. La respuesta indica estado y cantidad de fragmentos. Después puedes verificar el listado del curso con su endpoint `GET`.
+
 Para ejecutar la prueba de salud, en otra terminal dentro de `backend/`:
 
 ```powershell

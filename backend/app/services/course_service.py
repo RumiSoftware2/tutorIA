@@ -20,6 +20,10 @@ def get_active_course(db: Session, course_id: UUID) -> Course | None:
     return db.scalar(statement)
 
 
+def get_course(db: Session, course_id: UUID) -> Course | None:
+    return db.get(Course, course_id)
+
+
 def create_course(db: Session, course_data: dict) -> Course:
     course = Course(**course_data)
     db.add(course)
