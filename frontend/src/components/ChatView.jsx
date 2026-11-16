@@ -7,7 +7,7 @@ const MathMarkdown = lazy(() => import('./MathMarkdown.jsx'))
 function friendlyError(error) {
   if (!error.status) return error.message || 'No pudimos conectar con el tutor. Revisa que el backend esté activo.'
   if (error.status === 429) return 'El tutor está recibiendo muchas solicitudes o alcanzó su cuota temporal. Espera un momento e inténtalo de nuevo.'
-  if ([502, 503, 504].includes(error.status)) return 'El tutor no está disponible en este momento. Inténtalo de nuevo en unos segundos.'
+  if (error.status >= 500) return 'El tutor no está disponible mientras el servidor inicia o se recupera. Vuelve a intentarlo en unos segundos.'
   return error.message || 'No se pudo enviar tu pregunta. Inténtalo de nuevo.'
 }
 
@@ -45,8 +45,15 @@ export default function ChatView({ course, onBack }) {
         message,
         history: priorMessages.map(({ role, content }) => ({ role, content })),
       })
-      setMessages((current) => [...current, { role: 'assistant', content: result.answer, sources: result.sources || [] }])
+      const answer = typeof result?.answer === 'string' ? result.answer.trim() : ''
+      setMessages((current) => [...current, {
+        role: 'assistant',
+        content: answer || 'No recibí una respuesta completa esta vez. Puedes volver a enviar la pregunta.',
+        sources: Array.isArray(result?.sources) ? result.sources : [],
+      }])
     } catch (requestError) {
+      setMessages((current) => current.at(-1)?.role === 'user' ? current.slice(0, -1) : current)
+      setDraft(message)
       setError(friendlyError(requestError))
     } finally {
       setSending(false)
@@ -89,7 +96,7 @@ export default function ChatView({ course, onBack }) {
           </article>
         ))}
         {sending && <div className="chat-pending" role="status"><span className="typing-dots" aria-hidden="true">•••</span> El tutor está preparando una respuesta…</div>}
-        {error && <div className="chat-error" role="alert"><span>{error}</span><button className="text-button" type="button" onClick={() => { setError(''); inputRef.current?.focus() }}>Entendido</button></div>}
+        {error && <div className="chat-error" role="alert"><span>{error}</span><button className="text-button" type="button" onClick={() => submitMessage()}>Reintentar pregunta</button></div>}
         <div ref={endRef} />
       </div>
 
