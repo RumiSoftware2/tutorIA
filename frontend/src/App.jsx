@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import CourseGallery from './components/CourseGallery.jsx'
+import ChatView from './components/ChatView.jsx'
 import RoleSwitcher from './components/RoleSwitcher.jsx'
 import TeacherDashboard from './components/TeacherDashboard.jsx'
 import TeacherLogin from './components/TeacherLogin.jsx'
@@ -90,25 +91,7 @@ function App() {
             <TeacherLogin onSuccess={handleLoginSuccess} onCancel={() => chooseRole('student')} />
           )
         ) : selectedCourse ? (
-          <section className="course-preview" aria-live="polite">
-            <button className="back-link" onClick={() => setSelectedCourse(null)}>
-              <span aria-hidden="true">←</span> Volver a los cursos
-            </button>
-            <div className="preview-card">
-              <span className="preview-icon" aria-hidden="true">f(x)</span>
-              <p className="eyebrow">{selectedCourse.subject || 'MATEMÁTICAS'}</p>
-              <h1>{selectedCourse.title}</h1>
-              <p className="preview-grade">{selectedCourse.grade_level || 'Todos los niveles'}</p>
-              <p className="preview-description">{selectedCourse.description}</p>
-              <div className="topic-list" aria-label="Temas del curso">
-                {(selectedCourse.topics || []).map((topic) => <span className="topic-chip" key={topic}>{topic}</span>)}
-              </div>
-              <div className="coming-note">
-                <span aria-hidden="true">✧</span>
-                <span>El espacio de tutoría de este curso se incorporará en una siguiente etapa.</span>
-              </div>
-            </div>
-          </section>
+          <ChatView course={selectedCourse} onBack={() => setSelectedCourse(null)} />
         ) : (
           <>
             <section className="hero-section">

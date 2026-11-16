@@ -81,3 +81,7 @@ export function uploadDocument(courseId, file, token) {
 export function deleteDocument(documentId, token) {
   return request(`/documents/${encodeURIComponent(documentId)}`, { method: 'DELETE', token })
 }
+
+export function sendChatMessage(payload) {
+  return request('/chat', { method: 'POST', body: JSON.stringify(payload) })
+}
