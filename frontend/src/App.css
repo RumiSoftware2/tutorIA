@@ -256,6 +256,11 @@ button:focus-visible, a:focus-visible { outline: 3px solid #91a2ee; outline-offs
 @keyframes dots-pulse { to { opacity: .35; } }
 .chat-error { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 0 0 15px 40px; padding: 10px 12px; border-radius: 10px; color: #974c55; background: #fff0f0; font-size: 11px; line-height: 1.5; }
 .chat-composer { padding: 12px 18px 14px; border-top: 1px solid var(--color-border); background: #fff; }
+.chat-provider-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 9px; color: #687087; font-size: 10px; }
+.chat-provider-row label { font-weight: 750; }
+.chat-provider-row select { max-width: 100%; min-height: 34px; padding: 0 30px 0 10px; border: 1px solid #e2e4ef; border-radius: 9px; color: var(--color-text); background: #fbfbfe; font: inherit; font-size: 11px; }
+.chat-provider-row select:focus { outline: 3px solid rgba(104,116,202,.12); border-color: #a8addf; }
+.chat-provider-row > span { color: #a36b32; }
 .chat-composer textarea { display: block; width: 100%; min-height: 45px; max-height: 130px; resize: vertical; padding: 11px 12px; border: 1px solid #e6e7f0; border-radius: 11px; outline: none; color: var(--color-text); background: #fcfcfe; font: inherit; font-size: 12px; line-height: 1.5; }
 .chat-composer textarea:focus { border-color: #a8addf; box-shadow: 0 0 0 3px rgba(104,116,202,.1); }
 .chat-composer textarea:disabled { opacity: .7; }

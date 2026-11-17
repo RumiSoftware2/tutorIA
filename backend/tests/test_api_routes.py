@@ -12,3 +12,4 @@ def test_auth_and_course_routes_are_registered_under_api_prefix() -> None:
     assert "/api/v1/courses/{course_id}/documents" in paths
     assert "/api/v1/documents/{document_id}" in paths
     assert "/api/v1/chat" in paths
+    assert "/api/v1/chat/providers" in paths

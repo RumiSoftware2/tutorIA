@@ -1,68 +1,85 @@
+import asyncio
+
 import pytest
 
+from app.core.config import Settings
 from app.providers.base import TutorProviderError
-from app.providers.fallback import FallbackTutorProvider
+from app.providers.fallback import TutorProviderManager
 
 
 class FakeProvider:
-    def __init__(self, result: str | Exception) -> None:
+    def __init__(self, result):
         self.result = result
-        self.calls: list[tuple[str, str]] = []
+        self.calls = []
 
-    def generate(self, *, system_instruction: str, contents: str) -> str:
+    async def generate(self, *, system_instruction, contents):
         self.calls.append((system_instruction, contents))
         if isinstance(self.result, Exception):
             raise self.result
         return self.result
 
 
-@pytest.mark.parametrize("status_code", [429, 502, 503])
-def test_transient_gemini_error_uses_groq_with_identical_prompt(status_code: int) -> None:
-    gemini = FakeProvider(TutorProviderError("Gemini temporalmente no disponible", status_code=status_code))
-    groq = FakeProvider("Respuesta desde Groq")
-    chain = FallbackTutorProvider(lambda: gemini, lambda: groq)
+def test_requested_provider_is_first_and_falls_back_in_priority_order():
+    openai = FakeProvider("OpenAI")
+    claude = FakeProvider("Claude")
+    groq = FakeProvider("Groq")
+    gemini = FakeProvider("Gemini")
+    providers = {"openai": openai, "anthropic": claude, "groq": groq, "gemini": gemini}
+    manager = TutorProviderManager(Settings(), providers)
 
-    shared_instructions = "Responde solo con evidencia; pide aclaración si falta información."
-    shared_context = (
-        "<contexto_documental>\nEJERCICIO ORIGINAL: Factorice 12x² + 18x.\n"
-        "</contexto_documental>\nPregunta: ¿Qué ejercicio aparece en la evaluación?"
-    )
-    answer = chain.generate(system_instruction=shared_instructions, contents=shared_context)
+    answer, used = asyncio.run(manager.generate(system_instruction="pedagogía", contents="chunk real", preferred="groq"))
 
-    assert answer == "Respuesta desde Groq"
-    assert chain.provider_used == "groq"
-    assert gemini.calls == [(shared_instructions, shared_context)]
-    assert groq.calls == gemini.calls
+    assert (answer, used) == ("Groq", "groq")
+    assert len(groq.calls) == 1 and not openai.calls and not claude.calls and not gemini.calls
 
 
-def test_gemini_success_does_not_call_groq() -> None:
-    gemini = FakeProvider("Respuesta desde Gemini")
-    groq = FakeProvider("No debe ejecutarse")
-    chain = FallbackTutorProvider(lambda: gemini, lambda: groq)
+def test_selected_failure_uses_general_order_without_repeating_provider():
+    failed = FakeProvider(TutorProviderError("timeout", status_code=504, category="timeout"))
+    openai = FakeProvider("respuesta")
+    groq = FakeProvider("unused")
+    manager = TutorProviderManager(Settings(), {"groq": groq, "gemini": failed, "openai": openai})
 
-    assert chain.generate(system_instruction="I", contents="C") == "Respuesta desde Gemini"
-    assert chain.provider_used == "gemini"
-    assert len(groq.calls) == 0
+    answer, used = asyncio.run(manager.generate(system_instruction="I", contents="C", preferred="gemini"))
 
-
-def test_non_transient_gemini_error_does_not_call_groq() -> None:
-    gemini = FakeProvider(TutorProviderError("Configuración inválida", status_code=503, retryable=False))
-    groq = FakeProvider("No debe ejecutarse")
-    chain = FallbackTutorProvider(lambda: gemini, lambda: groq)
-
-    with pytest.raises(TutorProviderError, match="Configuración inválida"):
-        chain.generate(system_instruction="I", contents="C")
-    assert len(groq.calls) == 0
+    assert (answer, used) == ("respuesta", "openai")
+    assert not groq.calls
+    assert failed.calls == [("I", "C")] and openai.calls == failed.calls
 
 
-def test_both_providers_failing_returns_controlled_error() -> None:
-    gemini = FakeProvider(TutorProviderError("Detalle privado de Gemini", status_code=503))
-    groq = FakeProvider(TutorProviderError("Detalle privado de Groq", status_code=502))
-    chain = FallbackTutorProvider(lambda: gemini, lambda: groq)
+def test_all_providers_fail_with_controlled_response_and_status():
+    manager = TutorProviderManager(Settings(), {
+        "openai": FakeProvider(TutorProviderError("private", category="authentication")),
+        "gemini": FakeProvider(TutorProviderError("private", category="unavailable")),
+    })
 
-    with pytest.raises(TutorProviderError) as exc_info:
-        chain.generate(system_instruction="I", contents="C")
+    with pytest.raises(TutorProviderError) as error:
+        asyncio.run(manager.generate(system_instruction="I", contents="C"))
 
-    assert exc_info.value.status_code == 503
-    assert "ambos proveedores" in str(exc_info.value).lower()
-    assert "Detalle privado" not in str(exc_info.value)
+    assert error.value.status_code == 503
+    assert "authentication" in str(error.value) and "unavailable" in str(error.value)
+    assert "private" not in str(error.value)
+    assert manager.availability()[0]["status"] == "requires_configuration"
+    assert manager.availability()[3]["status"] == "temporarily_unavailable"
+
+
+def test_timeout_advances_fallback():
+    async def timeout(*, system_instruction, contents):
+        await asyncio.sleep(1.1)
+    slow = FakeProvider("not used")
+    slow.generate = timeout
+    fast = FakeProvider("Groq response")
+    settings = Settings(openai_timeout_seconds=1)
+    manager = TutorProviderManager(settings, {"openai": slow, "groq": fast})
+
+    answer, used = asyncio.run(manager.generate(system_instruction="I", contents="C"))
+
+    assert (answer, used) == ("Groq response", "groq")
+
+
+def test_provider_availability_does_not_claim_health_without_a_real_call():
+    manager = TutorProviderManager(Settings(), {"groq": FakeProvider("ok")})
+    statuses = manager.availability()
+    assert [item["provider"] for item in statuses] == ["openai", "anthropic", "groq", "gemini"]
+    assert statuses[0]["status"] == "requires_configuration"
+    assert statuses[2]["status"] == "configured"
+    assert statuses[2]["availability_verified"] is False

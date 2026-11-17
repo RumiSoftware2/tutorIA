@@ -18,9 +18,19 @@ class Settings(BaseSettings):
     chunk_overlap_chars: int = Field(default=150, ge=0, le=2_000)
     gemini_api_key: str | None = None
     gemini_model: str = "gemini-3.8-flash"
+    gemini_timeout_seconds: float = Field(default=45, ge=1, le=180)
     groq_api_key: str | None = None
     groq_model: str = "openai/gpt-oss-20b"
     groq_enabled: bool = False
+    groq_timeout_seconds: float = Field(default=30, ge=1, le=180)
+    openai_api_key: str | None = None
+    openai_model: str = ""
+    openai_timeout_seconds: float = Field(default=30, ge=1, le=180)
+    anthropic_api_key: str | None = None
+    anthropic_model: str = ""
+    anthropic_timeout_seconds: float = Field(default=30, ge=1, le=180)
+    provider_unavailable_cooldown_seconds: int = Field(default=30, ge=1, le=600)
+    provider_fallback_total_timeout_seconds: int = Field(default=90, ge=1, le=600)
     retrieval_top_k: int = Field(default=5, ge=1, le=20)
     max_chat_message_chars: int = Field(default=1_500, ge=1, le=10_000)
     max_history_messages: int = Field(default=8, ge=0, le=20)

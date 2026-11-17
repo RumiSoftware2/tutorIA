@@ -102,3 +102,7 @@ export function deleteDocument(documentId, token) {
 export function sendChatMessage(payload) {
   return request('/chat', { method: 'POST', body: JSON.stringify(payload) })
 }
+
+export function getChatProviders() {
+  return request('/chat/providers')
+}

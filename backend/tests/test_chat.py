@@ -27,6 +27,13 @@ def test_chat_schema_enforces_message_and_history_limits() -> None:
         ChatRequest(course_id=uuid4(), message="Pregunta", history=[{"role": "user", "content": "x"}] * 9)
 
 
+def test_chat_schema_accepts_configured_provider_names_only() -> None:
+    request = ChatRequest(course_id=uuid4(), message="Pregunta", provider="anthropic")
+    assert request.provider == "anthropic"
+    with pytest.raises(ValidationError):
+        ChatRequest(course_id=uuid4(), message="Pregunta", provider="claude")
+
+
 def test_gemini_unavailable_status_is_returned_as_retryable_503() -> None:
     error = _provider_error_for_api_code(503)
     assert error.status_code == 503

@@ -11,3 +11,5 @@ python-multipart>=0.0.20,<1
 markitdown[pdf,docx,pptx]==0.1.9
 google-genai>=1.55,<3
 groq>=1.7,<2
+openai>=1.66,<3
+anthropic>=0.40,<1

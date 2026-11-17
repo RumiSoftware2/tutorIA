@@ -1,11 +1,12 @@
 import re
 import unicodedata
+from dataclasses import dataclass
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.providers.base import TutorProvider
+from app.providers.base import SyncTutorProvider
 from app.schemas.chat import ChatHistoryMessage, ChatSource
 from app.services.course_service import get_active_course
 from app.services.retrieval_service import retrieve_course_chunks
@@ -38,6 +39,14 @@ class CourseUnavailableError(Exception):
     pass
 
 
+@dataclass(frozen=True)
+class PreparedCourseQuestion:
+    system_instruction: str
+    contents: str
+    sources: list[ChatSource]
+    immediate_answer: str | None = None
+
+
 def _asks_about_course_material(message: str) -> bool:
     normalized = unicodedata.normalize("NFKD", message.casefold())
     normalized = "".join(char for char in normalized if not unicodedata.combining(char))
@@ -51,15 +60,14 @@ def _asks_about_course_material(message: str) -> bool:
     )
 
 
-def answer_course_question(
+def prepare_course_question(
     db: Session,
     settings: Settings,
-    provider: TutorProvider,
     *,
     course_id: UUID,
     message: str,
     history: list[ChatHistoryMessage],
-) -> tuple[str, list[ChatSource]]:
+) -> PreparedCourseQuestion:
     course = get_active_course(db, course_id)
     if course is None:
         raise CourseUnavailableError
@@ -67,10 +75,14 @@ def answer_course_question(
         db, course_id, message, top_k=settings.retrieval_top_k, max_context_chars=settings.max_context_chars
     )
     if not chunks and _asks_about_course_material(message):
-        return (
-            "No encuentro esa información en los fragmentos recuperados del material del curso. "
-            "¿Puedes indicar la página, el ejercicio o compartir el fragmento que quieres revisar?",
-            [],
+        return PreparedCourseQuestion(
+            system_instruction=SYSTEM_INSTRUCTION,
+            contents="",
+            sources=[],
+            immediate_answer=(
+                "No encuentro esa información en los fragmentos recuperados del material del curso. "
+                "¿Puedes indicar la página, el ejercicio o compartir el fragmento que quieres revisar?"
+            ),
         )
     context = "\n\n".join(
         f"[Documento: {chunk.document_title}; fragmento: {chunk.chunk_index}]\n{chunk.content}"
@@ -86,6 +98,27 @@ def answer_course_question(
         f"{course_description}\n\n<contexto_documental>\n{context}\n</contexto_documental>"
         f"\n\nHistorial reciente:\n{transcript or '(sin historial)'}\n\nPregunta actual: {message}"
     )
-    answer = provider.generate(system_instruction=SYSTEM_INSTRUCTION, contents=contents)
     sources = [ChatSource(document_title=chunk.document_title, chunk_index=chunk.chunk_index) for chunk in chunks]
-    return answer, sources
+    return PreparedCourseQuestion(system_instruction=SYSTEM_INSTRUCTION, contents=contents, sources=sources)
+
+
+def answer_course_question(
+    db: Session,
+    settings: Settings,
+    provider: SyncTutorProvider,
+    *,
+    course_id: UUID,
+    message: str,
+    history: list[ChatHistoryMessage],
+) -> tuple[str, list[ChatSource]]:
+    """Compatibility helper used by synchronous service tests and integrations."""
+    prepared = prepare_course_question(
+        db, settings, course_id=course_id, message=message, history=history
+    )
+    if prepared.immediate_answer is not None:
+        return prepared.immediate_answer, prepared.sources
+    answer = provider.generate(
+        system_instruction=prepared.system_instruction,
+        contents=prepared.contents,
+    )
+    return answer, prepared.sources

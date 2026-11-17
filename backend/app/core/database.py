@@ -23,10 +23,15 @@ def create_database_engine(database_url: str | None = None) -> Engine:
 
 
 def get_db() -> Generator[Session, None, None]:
-    engine = create_database_engine()
-    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
-    db = session_factory()
+    db = create_session()
     try:
         yield db
     finally:
         db.close()
+
+
+def create_session() -> Session:
+    """Create a short-lived synchronous session using the shared engine pool."""
+    engine = create_database_engine()
+    session_factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    return session_factory()
